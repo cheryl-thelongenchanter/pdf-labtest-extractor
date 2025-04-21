@@ -17,6 +17,9 @@ if uploaded_file:
     for page in pdf_doc:
         full_text += page.get_text()
 
+    # Clean up footer text if it exists
+    full_text = re.sub(r"By receiving this transfer in Metrc[\s\S]+?rejecting any items.*", "", full_text, flags=re.IGNORECASE)
+
     # Extract Customer Name
     customer_match = re.search(r"Originating\s+Entity\s+(.*?)\s+For MED", full_text)
     customer = customer_match.group(1).strip() if customer_match else ""
@@ -25,20 +28,28 @@ if uploaded_file:
     license_match = re.search(r"Originating License Number\s+(\S+)", full_text)
     license_number = license_match.group(1).strip() if license_match else ""
 
+    # Extract Manifest Number
+    manifest_match = re.search(r"Manifest No\.\s+(\d{10})", full_text)
+    manifest_number = manifest_match.group(1).strip() if manifest_match else ""
+
     # Split the text into packages
     package_blocks = re.split(r"\n\d+\. Package \| Accepted", full_text)
+    unique_services = set()
     service_entries = []
 
     for block in package_blocks[1:]:  # Skip the first split (header text)
         service_match = re.search(r"Req'd Lab Test Batches\s*([\w,\s]+)", block)
         if service_match:
-            services = [s.strip() for s in service_match.group(1).split(",")]
+            services = [s.strip() for s in service_match.group(1).split(",") if s.strip()]
             for service in services:
-                service_entries.append({
-                    "customer": customer,
-                    "license": license_number,
-                    "service": service
-                })
+                if service not in unique_services:
+                    unique_services.add(service)
+                    service_entries.append({
+                        "customer": customer,
+                        "manifest": manifest_number,
+                        "license": license_number,
+                        "service": service
+                    })
 
     # Count frequencies
     service_counts = Counter([entry["service"] for entry in service_entries])
@@ -48,7 +59,7 @@ if uploaded_file:
     for entry in service_entries:
         service = entry["service"]
         row = ["", entry["customer"], "", "", "", "", "", "",
-               entry["license"], service, service, "", "", service_counts[service]]
+               entry["manifest"], entry["license"], service, service, "", service_counts[service]]
         rows.append(row)
 
     # Create DataFrame with correct column layout
