@@ -1,0 +1,70 @@
+import streamlit as st
+import pandas as pd
+import fitz  # PyMuPDF
+import io
+from collections import Counter
+import re
+
+st.set_page_config(page_title="PDF Lab Test Extractor", layout="centered")
+st.title("🧪 Lab Test PDF Extractor to Excel")
+
+uploaded_file = st.file_uploader("Upload a Transfer Manifest PDF", type=["pdf"])
+
+if uploaded_file:
+    # Read the PDF
+    pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+    full_text = ""
+    for page in pdf_doc:
+        full_text += page.get_text()
+
+    # Extract Customer Name
+    customer_match = re.search(r"Originating\s+Entity\s+(.*?)\s+For MED", full_text)
+    customer = customer_match.group(1).strip() if customer_match else ""
+
+    # Extract License Number
+    license_match = re.search(r"Originating License Number\s+(\S+)", full_text)
+    license_number = license_match.group(1).strip() if license_match else ""
+
+    # Split the text into packages
+    package_blocks = re.split(r"\n\d+\. Package \| Accepted", full_text)
+    service_entries = []
+
+    for block in package_blocks[1:]:  # Skip the first split (header text)
+        service_match = re.search(r"Req'd Lab Test Batches\s*([\w,\s]+)", block)
+        if service_match:
+            services = [s.strip() for s in service_match.group(1).split(",")]
+            for service in services:
+                service_entries.append({
+                    "customer": customer,
+                    "license": license_number,
+                    "service": service
+                })
+
+    # Count frequencies
+    service_counts = Counter([entry["service"] for entry in service_entries])
+
+    # Build rows
+    rows = []
+    for entry in service_entries:
+        service = entry["service"]
+        row = ["", entry["customer"], "", "", "", "", "", "",
+               entry["license"], service, service, "", "", service_counts[service]]
+        rows.append(row)
+
+    # Create DataFrame with correct column layout
+    columns = list("ABCDEFGHIJKLMN")[:14]  # Up to column N
+    df = pd.DataFrame(rows, columns=columns)
+
+    # Export to Excel
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="LabTestData")
+    output.seek(0)
+
+    st.success("✅ Data extracted successfully!")
+    st.download_button(
+        label="📥 Download Excel File",
+        data=output,
+        file_name="lab_test_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
