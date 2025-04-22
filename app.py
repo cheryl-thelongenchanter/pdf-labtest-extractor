@@ -52,14 +52,13 @@ if uploaded_file:
     all_services = []
 
     for block in package_blocks[1:]:
-        service_match = re.search(r"Req'd Lab Test Batches\s*([\w,\s\/&]+)", block)
+        service_match = re.search(r"Req'd Lab Test Batches\s*([^\n]*)", block)
         if service_match:
             raw_services = [s.strip() for s in service_match.group(1).split(",") if s.strip()]
             for service in raw_services:
-                # Normalize and filter against valid list
-                cleaned_service = service.lower().replace("  ", " ").replace("4", "").strip().title()
+                cleaned_service = service.lower().replace("  ", " ").strip()
                 for valid in valid_services:
-                    if valid.lower() == cleaned_service.lower():
+                    if valid.lower() in cleaned_service:
                         all_services.append(valid)
                         break
 
@@ -71,12 +70,13 @@ if uploaded_file:
     rows = []
     for i, service in enumerate(unique_services):
         row = ["", customer if i == 0 else "", "", "", "", "", "", "",
-               manifest_number if i == 0 else "", license_number if i == 0 else "", service, service, "", service_counts[service]]
+               manifest_number if i == 0 else "", license_number if i == 0 else "", service, "", "", service_counts[service]]
         rows.append(row)
 
     # Create DataFrame with correct column layout
-    columns = list("ABCDEFGHIJKLMN")  # Exactly 14 columns A to N
+    columns = list("ABCDEFGHIJKLMN")  # A to N
     df = pd.DataFrame(rows, columns=columns)
+    df["L"] = ""  # Overwrite column L explicitly with blanks
 
     # Export to Excel
     output = io.BytesIO()
