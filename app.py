@@ -4,24 +4,24 @@ import fitz  # PyMuPDF
 import io
 from collections import Counter
 import re
+import os
 
 st.set_page_config(page_title="PDF Lab Test Extractor", layout="centered")
 st.title("🧪 Lab Test PDF Extractor to Excel")
 
-company_lookup_file = st.file_uploader("Upload License-to-Company Lookup CSV (License Number, Company Name)", type=["csv"])
-product_lookup_file = st.file_uploader("Upload Product Lookup CSV (Product Name, Standardized Name, Description)", type=["csv"])
+# Load static lookup tables
+company_df = pd.read_csv("license_to_company_lookup.csv")
+product_df = pd.read_csv("product_lookup.csv")
+
+company_df["License Number"] = company_df["License Number"].astype(str).str.strip()
+license_to_company = dict(zip(company_df["License Number"].str.strip(), company_df["Company Name"].str.strip()))
+
+product_map = dict(zip(product_df["Product Name"].str.lower().str.strip(), product_df["Standardized Name"].str.strip()))
+desc_map = dict(zip(product_df["Standardized Name"].str.strip(), product_df["Description"].str.strip()))
+
 uploaded_files = st.file_uploader("Upload one or more Transfer Manifest PDFs", type=["pdf"], accept_multiple_files=True)
 
-if uploaded_files and company_lookup_file and product_lookup_file:
-    # Load the lookup tables
-    company_df = pd.read_csv(company_lookup_file)
-    company_df["License Number"] = company_df["License Number"].astype(str).str.strip()
-    license_to_company = dict(zip(company_df["License Number"].str.strip(), company_df["Company Name"].str.strip()))
-
-    product_df = pd.read_csv(product_lookup_file)
-    product_map = dict(zip(product_df["Product Name"].str.lower().str.strip(), product_df["Standardized Name"].str.strip()))
-    desc_map = dict(zip(product_df["Standardized Name"].str.strip(), product_df["Description"].str.strip()))
-
+if uploaded_files:
     all_rows = []
 
     for uploaded_file in uploaded_files:
