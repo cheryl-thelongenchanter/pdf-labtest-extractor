@@ -75,9 +75,8 @@ if uploaded_file:
         rows.append(row)
 
     # Create DataFrame with correct column layout
-    columns = list("ABCDEFGHIJKLMN")[:13] + ["N"]  # Ensures column L is skipped
+    columns = list("ABCDEFGHIJKLMN")  # Exactly 14 columns A to N
     df = pd.DataFrame(rows, columns=columns)
-    df.insert(11, "L", "")  # Insert blank Column L manually
 
     # Export to Excel
     output = io.BytesIO()
