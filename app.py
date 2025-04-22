@@ -67,11 +67,11 @@ if uploaded_files:
         for i, service in enumerate(unique_services):
             description = desc_map.get(service.strip(), "")
             row = ["", customer if i == 0 else "", "", "", "", "", "", "",
-                   manifest_number if i == 0 else "", license_number if i == 0 else "", service, "", "", service_counts[service], description]
+                   manifest_number if i == 0 else "", license_number if i == 0 else "", service, "", "", "", service_counts[service], description]
             all_rows.append(row)
 
     # Create DataFrame with correct column layout
-    columns = list("ABCDEFGHIJKLMN") + ["M"]
+    columns = list("ABCDEFGHIJKLM") + ["L", "M", "N"]
     df = pd.DataFrame(all_rows, columns=columns)
     df["L"] = ""  # Ensure column L remains blank
 
