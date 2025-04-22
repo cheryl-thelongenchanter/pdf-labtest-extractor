@@ -34,32 +34,23 @@ if uploaded_file:
 
     # Split the text into packages
     package_blocks = re.split(r"\n\d+\. Package \| Accepted", full_text)
-    unique_services = set()
-    service_entries = []
+    all_services = []
 
     for block in package_blocks[1:]:  # Skip the first split (header text)
         service_match = re.search(r"Req'd Lab Test Batches\s*([\w,\s]+)", block)
         if service_match:
             services = [s.strip() for s in service_match.group(1).split(",") if s.strip()]
-            for service in services:
-                if service not in unique_services:
-                    unique_services.add(service)
-                    service_entries.append({
-                        "customer": customer,
-                        "manifest": manifest_number,
-                        "license": license_number,
-                        "service": service
-                    })
+            all_services.extend(services)
 
     # Count frequencies
-    service_counts = Counter([entry["service"] for entry in service_entries])
+    service_counts = Counter(all_services)
+    unique_services = sorted(service_counts.keys())
 
-    # Build rows
+    # Build rows with top row containing customer, manifest, and license
     rows = []
-    for entry in service_entries:
-        service = entry["service"]
-        row = ["", entry["customer"], "", "", "", "", "", "",
-               entry["manifest"], entry["license"], service, service, "", service_counts[service]]
+    for i, service in enumerate(unique_services):
+        row = ["", customer if i == 0 else "", "", "", "", "", "", "",
+               manifest_number if i == 0 else "", license_number if i == 0 else "", service, service, "", service_counts[service]]
         rows.append(row)
 
     # Create DataFrame with correct column layout
