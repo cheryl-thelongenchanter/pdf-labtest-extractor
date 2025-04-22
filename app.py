@@ -15,11 +15,12 @@ uploaded_files = st.file_uploader("Upload one or more Transfer Manifest PDFs", t
 if uploaded_files and company_lookup_file and product_lookup_file:
     # Load the lookup tables
     company_df = pd.read_csv(company_lookup_file)
-    product_df = pd.read_csv(product_lookup_file)
+    company_df["License Number"] = company_df["License Number"].astype(str).str.strip()
+    license_to_company = dict(zip(company_df["License Number"].str.strip(), company_df["Company Name"].str.strip()))
 
-    license_to_company = dict(zip(company_df["License Number"].astype(str), company_df["Company Name"]))
-    product_map = dict(zip(product_df["Product Name"].str.lower(), product_df["Standardized Name"]))
-    desc_map = dict(zip(product_df["Standardized Name"], product_df["Description"]))
+    product_df = pd.read_csv(product_lookup_file)
+    product_map = dict(zip(product_df["Product Name"].str.lower().str.strip(), product_df["Standardized Name"].str.strip()))
+    desc_map = dict(zip(product_df["Standardized Name"].str.strip(), product_df["Description"].str.strip()))
 
     all_rows = []
 
@@ -36,8 +37,8 @@ if uploaded_files and company_lookup_file and product_lookup_file:
         license_match = re.search(r"Originating License Number\s+(\S+)", full_text)
         license_number = license_match.group(1).strip() if license_match else ""
 
-        # Lookup Company Name from License
-        customer = license_to_company.get(license_number, "")
+        # Normalize and lookup Company Name from License Number
+        customer = license_to_company.get(license_number.strip(), "")
 
         # Extract Manifest Number
         manifest_match = re.search(r"Manifest No\.\s+(\d{10})", full_text)
@@ -52,15 +53,15 @@ if uploaded_files and company_lookup_file and product_lookup_file:
             if service_match:
                 raw_services = [s.strip() for s in service_match.group(1).split(",") if s.strip()]
                 for service_raw in raw_services:
-                    service_clean = service_raw.lower().replace("  ", " ").strip()
-                    service_std = product_map.get(service_clean, service_raw)
+                    key = service_raw.lower().strip()
+                    service_std = product_map.get(key, service_raw.strip())
                     all_services.append(service_std)
 
         service_counts = Counter(all_services)
         unique_services = sorted(service_counts.keys())
 
         for i, service in enumerate(unique_services):
-            description = desc_map.get(service, "")
+            description = desc_map.get(service.strip(), "")
             row = ["", customer if i == 0 else "", "", "", "", "", "", "",
                    manifest_number if i == 0 else "", license_number if i == 0 else "", service, "", "", service_counts[service], description]
             all_rows.append(row)
