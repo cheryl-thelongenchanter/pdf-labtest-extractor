@@ -10,8 +10,12 @@ st.set_page_config(page_title="PDF Lab Test Extractor", layout="centered")
 st.title("🧪 Lab Test PDF Extractor to Excel")
 
 # Load static lookup tables
-company_df = pd.read_csv("license_to_company_lookup.csv")
-product_df = pd.read_csv("product_lookup.csv")
+try:
+    company_df = pd.read_csv("license_to_company_lookup.csv")
+    product_df = pd.read_csv("product_lookup.csv")
+except FileNotFoundError:
+    st.error("Static CSV files not found. Please ensure 'license_to_company_lookup.csv' and 'product_lookup.csv' are in the same directory as this app.")
+    st.stop()
 
 company_df["License Number"] = company_df["License Number"].astype(str).str.strip()
 license_to_company = dict(zip(company_df["License Number"].str.strip(), company_df["Company Name"].str.strip()))
