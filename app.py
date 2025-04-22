@@ -32,15 +32,36 @@ if uploaded_file:
     manifest_match = re.search(r"Manifest No\.\s+(\d{10})", full_text)
     manifest_number = manifest_match.group(1).strip() if manifest_match else ""
 
+    # Define valid services (updated product/service list)
+    valid_services = [
+        "Homogeneity",
+        "Metals",
+        "Microbial Contaminant",
+        "Microbial Contaminant For Edible/Topical Products Only",
+        "Microbial Contaminant For Remediated Concentrates Only",
+        "Mycotoxin",
+        "Pesticides",
+        "Potency",
+        "R & D Testing",
+        "Residual Solvents",
+        "Water Activity"
+    ]
+
     # Split the text into packages
     package_blocks = re.split(r"\n\d+\. Package \| Accepted", full_text)
     all_services = []
 
-    for block in package_blocks[1:]:  # Skip the first split (header text)
-        service_match = re.search(r"Req'd Lab Test Batches\s*([\w,\s]+)", block)
+    for block in package_blocks[1:]:
+        service_match = re.search(r"Req'd Lab Test Batches\s*([\w,\s\/&]+)", block)
         if service_match:
-            services = [s.strip() for s in service_match.group(1).split(",") if s.strip()]
-            all_services.extend(services)
+            raw_services = [s.strip() for s in service_match.group(1).split(",") if s.strip()]
+            for service in raw_services:
+                # Normalize and filter against valid list
+                cleaned_service = service.lower().replace("  ", " ").replace("4", "").strip().title()
+                for valid in valid_services:
+                    if valid.lower() == cleaned_service.lower():
+                        all_services.append(valid)
+                        break
 
     # Count frequencies
     service_counts = Counter(all_services)
@@ -54,8 +75,9 @@ if uploaded_file:
         rows.append(row)
 
     # Create DataFrame with correct column layout
-    columns = list("ABCDEFGHIJKLMN")[:14]  # Up to column N
+    columns = list("ABCDEFGHIJKLMN")[:13] + ["N"]  # Ensures column L is skipped
     df = pd.DataFrame(rows, columns=columns)
+    df.insert(11, "L", "")  # Insert blank Column L manually
 
     # Export to Excel
     output = io.BytesIO()
